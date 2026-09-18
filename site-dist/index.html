@@ -1,0 +1,1216 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>评语分析</title>
+    <style>
+      :root {
+        --nav: #071d3a;
+        --blue: #3370ff;
+        --blue-2: #6695ff;
+        --blue-50: #f0f4ff;
+        --green: #2ea121;
+        --green-50: #eff9ef;
+        --amber: #de7802;
+        --amber-50: #fff7e8;
+        --red: #f54a45;
+        --red-50: #fff0ef;
+        --purple: #7f3bf5;
+        --purple-50: #f6f0ff;
+        --ink: #1f2329;
+        --muted: #646a73;
+        --hint: #8f959e;
+        --line: #dee0e3;
+        --line-soft: #eff0f1;
+        --page: #f5f6f7;
+        --surface: #fff;
+        --shadow: 0 1px 2px rgba(31, 35, 41, 0.04);
+      }
+
+      * {
+        box-sizing: border-box;
+        scrollbar-color: transparent transparent;
+        scrollbar-width: thin;
+      }
+
+      *::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
+      }
+
+      *::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      *::-webkit-scrollbar-thumb {
+        border-radius: 999px;
+        background: transparent;
+      }
+
+      *:hover::-webkit-scrollbar-thumb,
+      *::-webkit-scrollbar-thumb:hover {
+        background: rgba(143, 149, 158, 0.56);
+      }
+
+      body {
+        margin: 0;
+        min-width: 0;
+        height: 100vh;
+        overflow: hidden;
+        color: var(--ink);
+        background: var(--page);
+        font-family:
+          Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Microsoft YaHei", sans-serif;
+        font-size: 14px;
+        letter-spacing: 0;
+      }
+
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+      }
+
+      .shell {
+        display: grid;
+        grid-template-columns: 200px minmax(0, 1fr);
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      .sidebar {
+        display: flex;
+        flex-direction: column;
+        background: var(--nav);
+        overflow: hidden;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        min-height: 76px;
+        padding: 0 18px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .brand strong {
+        display: block;
+        color: #fff;
+        font-size: 16px;
+        line-height: 1.2;
+      }
+
+      .brand span {
+        display: block;
+        margin-top: 4px;
+        color: #9eb9db;
+        font-size: 11px;
+      }
+
+      .nav {
+        flex: 1;
+        padding: 14px 10px;
+        overflow-y: auto;
+      }
+
+      .nav-btn {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        height: 42px;
+        margin-bottom: 6px;
+        padding: 0 12px;
+        color: #c7d7ed;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        text-align: left;
+        font-size: 14px;
+      }
+
+      .nav-btn:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .nav-btn.active {
+        color: #fff;
+        background: linear-gradient(90deg, var(--blue), #0f6ceb);
+        font-weight: 700;
+      }
+
+      .nav-symbol {
+        display: grid;
+        width: 28px;
+        height: 28px;
+        place-items: center;
+        flex: 0 0 auto;
+      }
+
+      .nav-symbol svg {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2.4;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .side-foot {
+        padding: 12px 18px;
+        color: #5a7293;
+        font-size: 11px;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .main {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        overflow: hidden;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        height: 64px;
+        min-height: 64px;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--line-soft);
+        background: #fff;
+      }
+
+      .app-brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 168px;
+        color: var(--ink);
+        font-size: 18px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .title-block {
+        display: none;
+      }
+
+      .title-block h1 {
+        margin: 0;
+        color: var(--ink);
+        font-size: 20px;
+        line-height: 1.2;
+      }
+
+      .title-block p {
+        margin: 5px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .top-tabs {
+        display: flex;
+        align-items: center;
+        height: 64px;
+        gap: 0;
+        padding: 0;
+        border-radius: 0;
+        background: transparent;
+      }
+
+      .top-tab {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 64px;
+        padding: 0 28px;
+        border: 0;
+        border-radius: 0;
+        color: var(--muted);
+        background: transparent;
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .top-tab svg {
+        display: none;
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2.4;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .top-tab.active {
+        color: var(--blue);
+        background: #f1f5ff;
+      }
+
+      .top-tab.active::after {
+        content: "";
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        height: 3px;
+        background: var(--blue);
+      }
+
+      .top-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+      }
+
+      .top-actions .btn {
+        height: 32px;
+        gap: 6px;
+        padding: 0 12px;
+        font-weight: 700;
+      }
+
+      .top-actions svg {
+        width: 17px;
+        height: 17px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2.4;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .avatar {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-left: 0;
+      }
+
+      .avatar-badge {
+        display: grid;
+        width: 34px;
+        height: 34px;
+        place-items: center;
+        border-radius: 50%;
+        color: #fff;
+        background: var(--blue);
+        font-weight: 800;
+        font-size: 14px;
+      }
+
+      .avatar strong {
+        display: block;
+        font-size: 13px;
+      }
+
+      .avatar span {
+        display: block;
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .content {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        padding: 14px 18px 16px;
+      }
+
+      .page-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 18px;
+      }
+
+      .eyebrow {
+        margin-bottom: 6px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      h1 {
+        margin: 0;
+        color: var(--ink);
+        font-size: 22px;
+        line-height: 1.2;
+      }
+
+      .head-actions {
+        display: flex;
+        gap: 8px;
+        padding-top: 4px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        height: 32px;
+        padding: 0 12px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+        color: var(--blue);
+        background: #fff;
+        border-color: #c9d8ff;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .btn:hover:not(:disabled) {
+        background: var(--blue-50);
+      }
+
+      .btn.primary {
+        color: #fff;
+        background: var(--blue);
+        border-color: transparent;
+        box-shadow: none;
+      }
+
+      .btn.primary:hover:not(:disabled) {
+        background: #245bdb;
+      }
+
+      .btn.ghost {
+        color: #334155;
+        background: #f1f5f9;
+        border-color: transparent;
+      }
+
+      .btn.ghost:hover:not(:disabled) {
+        background: #e2e8f0;
+      }
+
+      .btn:disabled,
+      .btn.primary:disabled {
+        opacity: 0.5;
+        pointer-events: none;
+      }
+
+      .btn svg {
+        width: 17px;
+        height: 17px;
+        stroke-width: 2.4;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .metric {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 74px;
+        padding: 0 20px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .metric span {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .metric strong {
+        color: var(--ink);
+        font-size: 28px;
+        line-height: 1.2;
+      }
+
+      .student-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .panel {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 18px;
+      }
+
+      .panel-body {
+        padding: 20px;
+      }
+
+      .student-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .student-title .bar {
+        width: 6px;
+        height: 22px;
+        border-radius: 999px;
+        background: var(--blue);
+      }
+
+      .student-title h2 {
+        margin: 0;
+        font-size: 18px;
+        line-height: 1.2;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        height: 26px;
+        padding: 0 9px;
+        border-radius: 999px;
+        color: var(--muted);
+        background: #f1f5f9;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .chip.done {
+        color: var(--green);
+        background: #dcfce7;
+      }
+
+      .identity-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 0.78fr 0.78fr;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .field label,
+      .comment-field label {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .control {
+        width: 100%;
+        height: 36px;
+        padding: 0 10px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        outline: none;
+        color: var(--ink);
+        background: #fff;
+        font-size: 13px;
+      }
+
+      .control::placeholder,
+      textarea::placeholder {
+        color: var(--hint);
+      }
+
+      .control:focus,
+      textarea:focus {
+        border-color: var(--blue);
+        box-shadow: 0 0 0 3px rgba(51, 112, 255, 0.12);
+      }
+
+      select.control {
+        appearance: none;
+        background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+          linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+        background-position:
+          calc(100% - 12px) 15px,
+          calc(100% - 7px) 15px;
+        background-size:
+          5px 5px,
+          5px 5px;
+        background-repeat: no-repeat;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 150px;
+        resize: vertical;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        outline: none;
+        color: var(--ink);
+        background: #fff;
+        line-height: 1.65;
+        font-size: 14px;
+      }
+
+      .form-bottom {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      .counter {
+        display: inline-flex;
+        align-items: center;
+        height: 28px;
+        padding: 0 9px;
+        border-radius: 6px;
+        color: var(--hint);
+        background: #f2f4f7;
+        font-size: 12px;
+      }
+
+      .analysis-card {
+        margin: 0 20px 20px;
+        border: 1px dashed var(--line);
+        border-radius: 10px;
+        background: #fbfdff;
+      }
+
+      .empty-state {
+        display: grid;
+        min-height: 208px;
+        place-items: center;
+        padding: 24px;
+        text-align: center;
+      }
+
+      .empty-icon {
+        display: grid;
+        place-items: center;
+        width: 54px;
+        height: 54px;
+        margin: 0 auto 14px;
+        border-radius: 14px;
+        color: var(--blue);
+        background: var(--blue-50);
+      }
+
+      .empty-icon svg {
+        width: 28px;
+        height: 28px;
+        stroke-width: 2.2;
+      }
+
+      .empty-state h3 {
+        margin: 0 0 6px;
+        color: var(--ink);
+        font-size: 18px;
+      }
+
+      .empty-state p {
+        margin: 0;
+        color: var(--hint);
+        font-size: 14px;
+      }
+
+      .result-wrap {
+        padding: 18px;
+      }
+
+      .result-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+
+      .result-title {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        color: var(--ink);
+        font-size: 16px;
+        font-weight: 800;
+      }
+
+      .spark {
+        color: #9b5cff;
+      }
+
+      .copy-btn {
+        min-width: 138px;
+      }
+
+      .result-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .competency {
+        padding: 16px;
+        border-radius: 10px;
+      }
+
+      .competency.positive {
+        border: 1px solid #b7f2cc;
+        background: var(--green-50);
+      }
+
+      .competency.negative {
+        border: 1px solid #ffc7c7;
+        background: var(--red-50);
+      }
+
+      .competency h3 {
+        margin: 0 0 10px;
+        font-size: 18px;
+      }
+
+      .positive h3,
+      .positive .code-label {
+        color: var(--green);
+      }
+
+      .negative h3,
+      .negative .code-label {
+        color: var(--red);
+      }
+
+      .result-text {
+        width: 100%;
+        min-height: 260px;
+        border-radius: 8px;
+        line-height: 1.62;
+        font-size: 15px;
+      }
+
+      .positive .result-text {
+        border-color: #b7f2cc;
+        background: rgba(255, 255, 255, 0.55);
+      }
+
+      .negative .result-text {
+        border-color: #ffc7c7;
+        background: rgba(255, 255, 255, 0.55);
+      }
+
+      .code-label {
+        display: block;
+        margin: 14px 0 8px;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .code-input {
+        width: 100%;
+        height: 40px;
+        padding: 0 12px;
+        border: 1px solid;
+        border-radius: 6px;
+        outline: none;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 15px;
+      }
+
+      .positive .code-input {
+        border-color: #b7f2cc;
+        background: rgba(255, 255, 255, 0.55);
+      }
+
+      .negative .code-input {
+        border-color: #ffc7c7;
+        background: rgba(255, 255, 255, 0.55);
+      }
+
+      .toast {
+        position: fixed;
+        right: 28px;
+        bottom: 28px;
+        z-index: 100;
+        display: none;
+        min-width: 260px;
+        padding: 14px 18px;
+        border-radius: 10px;
+        color: #fff;
+        background: #111827;
+        box-shadow: 0 16px 38px rgba(31, 35, 41, 0.24);
+        font-weight: 700;
+        font-size: 14px;
+      }
+
+      .toast.show {
+        display: block;
+        animation: fade 2.2s ease both;
+      }
+
+      @keyframes fade {
+        0% {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        12%,
+        84% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        100% {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+      }
+
+      @media (max-width: 1100px) {
+        .student-grid,
+        .result-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div>
+            <strong>中国南方航空</strong>
+            <span>飞行训练管理</span>
+          </div>
+        </div>
+        <nav class="nav" aria-label="主导航">
+          <button class="nav-btn" type="button">
+            <span class="nav-symbol"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg></span>
+            首页
+          </button>
+          <button class="nav-btn" type="button">
+            <span class="nav-symbol"><svg viewBox="0 0 24 24"><path d="M8 7h8M8 12h8M8 17h5"/><rect x="5" y="3" width="14" height="18" rx="2"/></svg></span>
+            训练记录
+          </button>
+          <button class="nav-btn active" type="button">
+            <span class="nav-symbol"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18 9.5l-4.2 1.8L12 16l-1.8-4.7L6 9.5l4.2-1.8L12 3Z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z"/></svg></span>
+            评语分析
+          </button>
+          <button class="nav-btn" type="button">
+            <span class="nav-symbol"><svg viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M8 19V9"/><path d="M12 19V7"/><path d="M16 19v-5"/><path d="M20 19V4"/></svg></span>
+            报表中心
+          </button>
+        </nav>
+        <div class="side-foot">南航训练管理系统</div>
+      </aside>
+
+      <div class="main">
+        <header class="topbar">
+          <div class="app-brand">评语分析</div>
+          <div class="top-actions">
+            <div class="avatar">
+              <div><strong>张机长</strong><span>评估教员</span></div>
+              <div class="avatar-badge">张</div>
+            </div>
+          </div>
+        </header>
+
+        <div class="content">
+          <div class="page-head">
+            <div>
+              <div class="eyebrow">训练评估 / 评语分析</div>
+              <h1>评语分析</h1>
+            </div>
+          </div>
+
+          <section class="stats" aria-label="分析进度">
+            <div class="metric"><span>学员数量</span><strong id="totalCount">2</strong></div>
+            <div class="metric"><span>已分析</span><strong id="doneCount">0</strong></div>
+            <div class="metric"><span>尚未分析</span><strong id="todoCount">2</strong></div>
+          </section>
+
+          <section class="student-grid" id="studentGrid">
+            <article class="panel" data-student="1">
+              <div class="panel-body">
+                <div class="panel-head">
+                  <div class="student-title">
+                    <span class="bar"></span>
+                    <h2>学员1</h2>
+                    <span class="chip" data-status>尚未分析</span>
+                  </div>
+                  <button class="btn ghost" data-reset="1" type="button">重置</button>
+                </div>
+
+                <div class="identity-grid">
+                  <div class="field">
+                    <label for="employee-1">员工号</label>
+                    <input class="control" id="employee-1" data-field="employee" maxlength="12" placeholder="请输入员工号" />
+                  </div>
+                  <div class="field">
+                    <label for="name-1">姓名</label>
+                    <input class="control" id="name-1" data-field="name" maxlength="20" placeholder="请输入姓名" />
+                  </div>
+                  <div class="field">
+                    <label for="up-1">上半场</label>
+                    <select class="control" id="up-1" data-field="up">
+                      <option value="">请选择</option>
+                      <option>PF</option>
+                      <option>PM</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="down-1">下半场</label>
+                    <select class="control" id="down-1" data-field="down">
+                      <option value="">请选择</option>
+                      <option>PF</option>
+                      <option>PM</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="comment-field">
+                  <label for="comment-1">评语</label>
+                  <textarea
+                    id="comment-1"
+                    data-field="comment"
+                    maxlength="3000"
+                    placeholder="请输入本次训练评语"
+                  ></textarea>
+                </div>
+                <div class="form-bottom">
+                  <span class="counter" data-counter>0 / 3000 字</span>
+                  <button class="btn primary" data-analyze="1" data-testid="analyze-1" type="button" disabled>
+                    填写评语后可分析
+                  </button>
+                </div>
+              </div>
+              <section class="analysis-card" data-analysis="1">
+                <div class="empty-state">
+                  <div>
+                    <div class="empty-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M12 3l1.8 4.7L18 9.5l-4.2 1.8L12 16l-1.8-4.7L6 9.5l4.2-1.8L12 3Z" />
+                        <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z" />
+                      </svg>
+                    </div>
+                    <h3>尚未分析</h3>
+                    <p>暂无 AI 分析结果</p>
+                  </div>
+                </div>
+              </section>
+            </article>
+
+            <article class="panel" data-student="2">
+              <div class="panel-body">
+                <div class="panel-head">
+                  <div class="student-title">
+                    <span class="bar"></span>
+                    <h2>学员2</h2>
+                    <span class="chip" data-status>尚未分析</span>
+                  </div>
+                  <button class="btn ghost" data-reset="2" type="button">重置</button>
+                </div>
+
+                <div class="identity-grid">
+                  <div class="field">
+                    <label for="employee-2">员工号</label>
+                    <input class="control" id="employee-2" data-field="employee" maxlength="12" placeholder="请输入员工号" />
+                  </div>
+                  <div class="field">
+                    <label for="name-2">姓名</label>
+                    <input class="control" id="name-2" data-field="name" maxlength="20" placeholder="请输入姓名" />
+                  </div>
+                  <div class="field">
+                    <label for="up-2">上半场</label>
+                    <select class="control" id="up-2" data-field="up">
+                      <option value="">请选择</option>
+                      <option>PF</option>
+                      <option>PM</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="down-2">下半场</label>
+                    <select class="control" id="down-2" data-field="down">
+                      <option value="">请选择</option>
+                      <option>PF</option>
+                      <option>PM</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="comment-field">
+                  <label for="comment-2">评语</label>
+                  <textarea
+                    id="comment-2"
+                    data-field="comment"
+                    maxlength="3000"
+                    placeholder="请输入本次训练评语"
+                  ></textarea>
+                </div>
+                <div class="form-bottom">
+                  <span class="counter" data-counter>0 / 3000 字</span>
+                  <button class="btn primary" data-analyze="2" data-testid="analyze-2" type="button" disabled>
+                    填写评语后可分析
+                  </button>
+                </div>
+              </div>
+              <section class="analysis-card" data-analysis="2">
+                <div class="empty-state">
+                  <div>
+                    <div class="empty-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M12 3l1.8 4.7L18 9.5l-4.2 1.8L12 16l-1.8-4.7L6 9.5l4.2-1.8L12 3Z" />
+                        <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z" />
+                      </svg>
+                    </div>
+                    <h3>尚未分析</h3>
+                    <p>暂无 AI 分析结果</p>
+                  </div>
+                </div>
+              </section>
+            </article>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      const samples = {
+        1: {
+          positive:
+            "**知识应用（KNO）**\n1. OB KNO.3 展示有关物理环境、空中交通环境（包括航线、天气、机场和运行基础设施）的知识：对进离场程序熟悉，航前准备充分。\n\n**人工航径管理（FPM）**\n1. OB FPM.1 根据情况，准确、平稳地人工控制飞机：侧风着陆过程中，能够及时修正偏差，保持稳定的进近航径。\n\n**程序应用和遵守规章（PRO）**\n1. OB PRO.2 及时应用相关的运行规定、程序和技术：复飞程序执行果断，符合标准操作程序要求。",
+          negative:
+            "**情景意识与信息管理（SAW）**\n1. OB SAW.1 监控并评估飞机及系统的状态：下降阶段对速度趋势关注不足，偏差出现后提醒略有滞后。\n\n**沟通（COM）**\n1. OB COM.3 清晰、准确、简洁地传递信息：驾驶舱内关键动作通报可进一步提前，减少后续修正压力。",
+          positiveCodes: "OB KNO.3, OB FPM.1, OB PRO.2",
+          negativeCodes: "OB SAW.1, OB COM.3",
+        },
+        2: {
+          positive:
+            "**人工航径管理（FPM）**\n1. OB FPM.1 根据情况，准确、平稳地人工控制飞机：进近过程中操纵动作柔和，修正及时，能够保持稳定航径。\n\n**沟通（COM）**\n1. OB COM.9 遵守标准的无线电通话用语和程序：与塔台沟通顺畅，无线电通话用语规范。\n\n**领导力与团队合作（LTW）**\n1. OB LTW.2 主动共享信息并支持团队决策：能及时向机组同步关键状态变化。",
+          negative:
+            "**情景意识与信息管理（SAW）**\n1. OB SAW.7 对情景意识下降的迹象作出响应：低高度阶段对能量状态变化识别不够主动，经提醒后能够修正。\n\n**程序应用和遵守规章（PRO）**\n1. OB PRO.2 程序执行中交叉检查还可加强，部分检查单项目确认节奏偏慢。",
+          positiveCodes: "OB FPM.1, OB COM.9, OB LTW.2",
+          negativeCodes: "OB SAW.7, OB PRO.2",
+        },
+      };
+
+      const emptyState = `
+        <div class="empty-state">
+          <div>
+            <div class="empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M12 3l1.8 4.7L18 9.5l-4.2 1.8L12 16l-1.8-4.7L6 9.5l4.2-1.8L12 3Z" />
+                <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z" />
+              </svg>
+            </div>
+            <h3>尚未分析</h3>
+            <p>暂无 AI 分析结果</p>
+          </div>
+        </div>
+      `;
+
+      function getPanel(id) {
+        return document.querySelector(`[data-student="${id}"]`);
+      }
+
+      function showToast(message) {
+        const toast = document.getElementById("toast");
+        toast.textContent = message;
+        toast.classList.remove("show");
+        void toast.offsetWidth;
+        toast.classList.add("show");
+      }
+
+      function updateProgress() {
+        const total = document.querySelectorAll("[data-student]").length;
+        const done = document.querySelectorAll("[data-status].done").length;
+        document.getElementById("totalCount").textContent = total;
+        document.getElementById("doneCount").textContent = done;
+        document.getElementById("todoCount").textContent = total - done;
+      }
+
+      function updatePanelState(panel) {
+        const textarea = panel.querySelector('[data-field="comment"]');
+        const button = panel.querySelector("[data-analyze]");
+        const counter = panel.querySelector("[data-counter]");
+        const length = textarea.value.trim().length;
+        counter.textContent = `${textarea.value.length} / 3000 字`;
+        button.disabled = length === 0;
+        button.textContent = length > 0 ? "AI分析" : "填写评语后可分析";
+      }
+
+      function renderResult(id) {
+        const data = samples[id];
+        const panel = getPanel(id);
+        const analysis = panel.querySelector("[data-analysis]");
+        const status = panel.querySelector("[data-status]");
+        analysis.innerHTML = `
+          <div class="result-wrap">
+            <div class="result-head">
+              <div class="result-title">
+                <svg class="spark" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor">
+                  <path d="M12 3l1.8 4.7L18 9.5l-4.2 1.8L12 16l-1.8-4.7L6 9.5l4.2-1.8L12 3Z" />
+                  <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z" />
+                </svg>
+                AI 分析结果（可编辑）
+              </div>
+              <button class="btn copy-btn" data-copy="${id}" data-testid="copy-${id}" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <rect x="9" y="9" width="11" height="11" rx="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+                复制分析结果
+              </button>
+            </div>
+            <div class="result-grid">
+              <section class="competency positive">
+                <h3>正向胜任力</h3>
+                <textarea class="result-text" data-result="positive">${data.positive}</textarea>
+                <label class="code-label">正向分类（OB代码）</label>
+                <input class="code-input" data-code="positive" value="${data.positiveCodes}" />
+              </section>
+              <section class="competency negative">
+                <h3>负向胜任力</h3>
+                <textarea class="result-text" data-result="negative">${data.negative}</textarea>
+                <label class="code-label">负向分类（OB代码）</label>
+                <input class="code-input" data-code="negative" value="${data.negativeCodes}" />
+              </section>
+            </div>
+          </div>
+        `;
+        status.textContent = "已分析";
+        status.classList.add("done");
+        updateProgress();
+        showToast(`学员${id}已生成 AI 分析结果`);
+      }
+
+      function resetPanel(id) {
+        const panel = getPanel(id);
+        panel.querySelectorAll("input, textarea").forEach((node) => {
+          node.value = "";
+        });
+        panel.querySelectorAll("select").forEach((node) => {
+          node.value = "";
+        });
+        panel.querySelector("[data-analysis]").innerHTML = emptyState;
+        const status = panel.querySelector("[data-status]");
+        status.textContent = "尚未分析";
+        status.classList.remove("done");
+        updatePanelState(panel);
+        updateProgress();
+      }
+
+      function buildCopyText(id) {
+        const panel = getPanel(id);
+        const name = panel.querySelector('[data-field="name"]').value.trim() || `学员${id}`;
+        const positive = panel.querySelector('[data-result="positive"]')?.value || "";
+        const negative = panel.querySelector('[data-result="negative"]')?.value || "";
+        const positiveCodes = panel.querySelector('[data-code="positive"]')?.value || "";
+        const negativeCodes = panel.querySelector('[data-code="negative"]')?.value || "";
+        return [
+          `${name} AI 分析结果`,
+          "",
+          "正向胜任力",
+          positive,
+          `正向分类（OB代码）：${positiveCodes}`,
+          "",
+          "负向胜任力",
+          negative,
+          `负向分类（OB代码）：${negativeCodes}`,
+        ].join("\n");
+      }
+
+      async function copyText(text) {
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch {
+          const helper = document.createElement("textarea");
+          helper.value = text;
+          helper.style.position = "fixed";
+          helper.style.left = "-9999px";
+          document.body.appendChild(helper);
+          helper.select();
+          document.execCommand("copy");
+          helper.remove();
+        }
+      }
+
+      document.querySelectorAll("[data-student]").forEach((panel) => {
+        panel.addEventListener("input", () => updatePanelState(panel));
+        panel.addEventListener("change", () => updatePanelState(panel));
+      });
+
+      function findActionTarget(target) {
+        if (!(target instanceof Element)) return null;
+        return target.closest("[data-analyze], [data-reset], [data-copy]");
+      }
+
+      async function runAction(actionTarget) {
+        if (!actionTarget || actionTarget.disabled) return;
+
+        const analyzeId = actionTarget.dataset.analyze;
+        if (analyzeId) {
+          renderResult(analyzeId);
+          return;
+        }
+
+        const resetId = actionTarget.dataset.reset;
+        if (resetId) {
+          resetPanel(resetId);
+          showToast(`学员${resetId}已重置`);
+          return;
+        }
+
+        const copyId = actionTarget.dataset.copy;
+        if (copyId) {
+          await copyText(buildCopyText(copyId));
+          actionTarget.textContent = "已复制";
+          window.setTimeout(() => {
+            actionTarget.innerHTML = `
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="9" y="9" width="11" height="11" rx="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+              复制分析结果
+            `;
+          }, 1600);
+          showToast(`学员${copyId}分析结果已复制`);
+        }
+      }
+
+      document.addEventListener("click", async (event) => {
+        await runAction(findActionTarget(event.target));
+      });
+
+      document.addEventListener("keydown", async (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        const actionTarget = findActionTarget(event.target);
+        if (!actionTarget) return;
+        event.preventDefault();
+        await runAction(actionTarget);
+      });
+
+      updateProgress();
+    </script>
+  </body>
+</html>
